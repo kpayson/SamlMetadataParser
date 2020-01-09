@@ -1,2 +1,0 @@
-# SamlMetadataParser
-Created with CodeSandbox
