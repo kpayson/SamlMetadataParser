@@ -27,14 +27,17 @@ function firstOrDefault(collection, pred) {
 }
 
 function findChild(elem, tagName) {
+  if (!elem) {
+    return null;
+  }
   const children = elem.getElementsByTagNameNS("*", tagName);
-  return children.length > 0 ? children[0] : null;
+  return children.length > 0 ? children[0].childNodes[0].data : null;
 }
 
 console.log("hello");
 var DOMParser = require("xmldom").DOMParser;
 
-const xml = testIdSaml; //test2Saml; //nihLoginSaml;
+const xml = test2Saml; //testIdSaml; //test2Saml; //nihLoginSaml;
 
 var doc = new DOMParser().parseFromString(xml);
 //console.log(doc);
@@ -66,11 +69,17 @@ const assertionConsumerServiceCollection = doc.getElementsByTagNameNS(
 
 const postBinding = "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST";
 
-const assertionConsumerService =
-  firstOrDefault(
-    assertionConsumerServiceCollection,
-    x => x.getAttribute("Binding") === postBinding
-  ) || {};
+const assertionConsumerService = firstOrDefault(
+  assertionConsumerServiceCollection,
+  x => x.getAttribute("Binding") === postBinding
+);
+
+const recipient = assertionConsumerService
+  ? assertionConsumerService.getAttribute("Location")
+  : null;
+const binding = assertionConsumerService
+  ? assertionConsumerService.getAttribute("Binding")
+  : null;
 
 const keyDescriptorCollection = doc.getElementsByTagNameNS(
   "*",
@@ -81,9 +90,7 @@ const signingKey = firstOrDefault(
   x => x.getAttribute("use") === "signing"
 );
 
-const signingCert =
-  (signingKey && signingKey.getElementsByTagNameNS("*", "X509Certificate")) ||
-  null;
+const signingCert = findChild(signingKey, "X509Certificate");
 
 const nameIdFormatCollection = doc.getElementsByTagNameNS("*", "NameIDFormat");
 const nameIdFormat =
@@ -97,6 +104,9 @@ const logoutService = firstOrDefault(
   logOutServicesCollection,
   x => x.getAttribute("Binding") === postBinding
 );
+const logoutCallback = logoutService
+  ? logoutService.getAttribute("Location")
+  : null;
 
 const organizationCollection = doc.getElementsByTagNameNS("*", "Organization");
 const org =
@@ -128,12 +138,12 @@ const metaData = {
   config: _.pickBy(
     {
       audience: audience,
-      recipient: assertionConsumerService.Location,
-      destination: assertionConsumerService.Location,
-      binding: assertionConsumerService.Binding,
+      recipient: recipient,
+      destination: recipient,
+      binding: binding,
       signingCert: signingCert,
       nameIdFormat: nameIdFormat,
-      logoutCallback: logoutService.Location,
+      logoutCallback: logoutCallback,
       signResponse: !wantAssertionsSigned
     },
     _.identity
